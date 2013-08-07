@@ -5,7 +5,7 @@ if [[ $EUID != 0 ]]; then
     exit 1
 fi
 
-source /usr/lib/powerdown-functions
+source PREFIX/lib/powerdown-functions
 lock
 
 sync
