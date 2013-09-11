@@ -45,7 +45,7 @@ opt /sys/module/snd_hda_intel/parameters/power_save_controller Y
 opt /sys/module/snd_ac97_codec/parameters/power_save 1
 
 # net
-for i in $(iw dev | grep Interface | cut -d ' ' -f 2); do run iw dev "$i" set power_save on; done
+for i in $(iw dev | awk '$1 == "Interface" { print $2 }'); do run iw dev "$i" set power_save on; done
 
 # screen
 for i in /sys/class/backlight/*; do opt "$i/brightness" "$(num_scale "$i/max_brightness" 1)"; done
