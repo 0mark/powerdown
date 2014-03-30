@@ -41,7 +41,7 @@ dump /sys/module/snd_hda_intel/parameters/power_save_controller
 dump /sys/module/snd_ac97_codec/parameters/power_save
 
 # net
-for i in $(iw dev | grep Interface | cut -d ' ' -f 2); do display_wireless "$i"; done
+for i in $(iw dev | awk '$1 == "Interface" { print $2 }'); do display_wireless "$i"; done
 
 # screen
 for i in /sys/class/backlight/*; do dump "$i/brightness"; done

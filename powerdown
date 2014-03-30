@@ -99,7 +99,7 @@ fi
 
 # net
 if [ "$NET" == "true" ]; then
-    for i in $(iw dev | grep Interface | cut -d ' ' -f 2); do
+    for i in $(iw dev | awk '$1 == "Interface" { print $2 }'); do
         run iw dev "$i" set power_save on;
     done
 fi
