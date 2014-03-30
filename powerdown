@@ -8,82 +8,138 @@ if [[ $EUID != 0 ]]; then
 fi
 
 source PREFIX/lib/powerdown-functions
-source /etc/powerdown-config
+source ETCPREFIX/powerdown.conf
 
 # bus ... seems to be eeeeeevil
-[ "$BUS" != "false" ] && for i in /sys/bus/*/devices/*/power/control; do opt "$i" auto; done
+if [ "$BUS" == "true" ]; then
+    for i in /sys/bus/*/devices/*/power/control; do
+        opt "$i" auto;
+    done
+fi
 
 # usb autosuspend
-if [ "$USB" != "false" ]; then
-    [ "$USB_autosuspend" != "false" ] && for i in /sys/bus/usb/devices/*/power/autosuspend; do opt "$i" 10; done
-    [ "$USB_powersave" != "false" -a "$BUS" == "false" ] && usb_powersave
+if [ "$USB" == "true" ]; then
+    if [ "$USB_autosuspend" == "true" ]; then
+        for i in /sys/bus/usb/devices/*/power/autosuspend;
+            do opt "$i" 10;
+        done
+    fi
+    if [ "$USB_powersave" == "true" -a "$BUS" == "false" ]; then
+        usb_powersave
+    fi
 fi
 
 # nmi_watchdog
-opt /proc/sys/kernel/nmi_watchdog 0
+if [ "$NMI" == "true" ]; then
+    opt /proc/sys/kernel/nmi_watchdog 0
+fi
 
 # cpu
 if [ "$CPU" == "true" ]; then
-    case "$CPU_GOV" in
+    case "$CPU_governor" in
         powersave|ps|psafe) CPU_GOV="powersave" ;;
         ondemand|od) CPU_GOV="ondemand" ;;
         conservative|cv) CPU_GOV="conservative" ;;
         *) CPU_GOV= ;;
     esac
-    [ ! -z "$CPU_GOV" ] && for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do opt "$i" $CPU_GOV; done
-    for i in /sys/class/thermal/cooling_device*; do opt "$i/cur_state" "$(num_scale "$i/max_state" 4)"; done
+    if [ ! -z "$CPU_governor" ]; then
+        for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            opt "$i" $CPU_GOV;
+        done
+    if [ "$CPU_thermal" == "true" ]; then
+        # FIXME bad scaling i think
+        for i in /sys/class/thermal/cooling_device*; do
+            opt "$i/cur_state" "$(num_scale "$i/max_state" 4)";
+        done
+    fi
 fi
 
 # aspm
-[ "$ASPM" == "true" ] opt /sys/module/pcie_aspm/parameters/policy powersave
+if [ "$ASPM" == "true" ]; then
+    opt /sys/module/pcie_aspm/parameters/policy powersave
+fi
 
 # kernel write mode
-if [ "$VM"!="true" ]; then
-    opt /proc/sys/vm/laptop_mode 5
-    opt /proc/sys/vm/dirty_ratio 90
-    opt /proc/sys/vm/dirty_background_ratio 1
-    opt /proc/sys/vm/dirty_expire_centisecs 60000
-    opt /proc/sys/vm/dirty_writeback_centisecs 60000
+if [ "$VM" == "true" ]; then
+    opt /proc/sys/vm/laptop_mode $VM_laptop_mode
+    opt /proc/sys/vm/dirty_ratio $VM_dirty_ratio
+    opt /proc/sys/vm/dirty_background_ratio $VM_dirty_background_ratio
+    opt /proc/sys/vm/dirty_expire_centisecs $VM_dirty_expire_centisecs
+    opt /proc/sys/vm/dirty_writeback_centisecs $VM_dirty_writeback_centisecs
 fi
 
 # disk
-if [ "$DISK"!="true" ]; then
-    [ "$DISK_LINK"!="true" ] && for i in /sys/class/scsi_host/host*/link_power_management_policy; do opt "$i" min_power; done
-    if [ "$DISK_OPTIONS"!="true" ]; then
-        for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do run mount -o remount,noatime "$dev"; done
-        for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do run blockdev --setra 4096 "$dev"; done
+if [ "$DISK" == "true" ]; then
+    if [ "$DISK_link_pm" == "true" ]; then
+        for i in /sys/class/scsi_host/host*/link_power_management_policy; do
+            opt "$i" min_power;
+        done
     fi
-    [ "$DISK_SPINDOWN"!="true" ] && for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do run hdparm -B 1 -S 120 "$dev"; done
+    if [ "$DISK_mount_options" == "true" ]; then
+        for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do
+            run mount -o remount,noatime "$dev";
+        done
+        for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do
+            run blockdev --setra 4096 "$dev";
+        done
+    fi
+    if [ "$DISK_spindown" -gt 0 ]; then
+        for dev in $(awk '/^\/dev\/sd/ {print $1}' /etc/mtab); do
+            run hdparm -B 1 -S $DISK_spindown "$dev";
+        done
+    fi
 fi
 
 # sound card
-if [ "$SOUND"!="true" ]; then
+if [ "$SOUND" == "true" ]; then
     opt /sys/module/snd_hda_intel/parameters/power_save 1
     opt /sys/module/snd_hda_intel/parameters/power_save_controller Y
     opt /sys/module/snd_ac97_codec/parameters/power_save 1
 fi
 
 # net
-[ "$NET"!="true" ] && for i in $(iw dev | grep Interface | cut -d ' ' -f 2); do run iw dev "$i" set power_save on; done
+if [ "$NET" == "true" ]; then
+    for i in $(iw dev | grep Interface | cut -d ' ' -f 2); do
+        run iw dev "$i" set power_save on;
+    done
+fi
 
 # screen
-[ "$BACKLIGHT"!="" ] && for i in /sys/class/backlight/*; do opt "$i/brightness" "$(num_scale "$i/max_brightness" 1)"; done
+if [ "$BACKLIGHT" == "true" ] ; then
+    for i in /sys/class/backlight/*; do 
+        # FIXME bad scaling i think
+        opt "$i/brightness" "$(num_scale "$i/max_brightness" 1)";
+    done
+fi
+
+#if [ "$" == "true" ]; then
 
 # webcam
-unload_mod uvcvideo
-unload_mod videodev
+if [ "$WEBCAM" == "true" ]; then
+    unload_mod uvcvideo
+    unload_mod videodev
+fi
 
 # bluetooth
-unload_mod btusb
-unload_mod bluetooth
+if [ "$BLUETOOTH" == "true" ]; then
+    unload_mod btusb
+    unload_mod bluetooth
+fi
 
-# open source ATI
-opt /sys/class/drm/card0/device/power_method profile
-opt /sys/class/drm/card0/device/power_profile low
-
-# i915
-opt /sys/module/i915/parameters/i915_enable_rc6 1
+# video
+if [ "$VIDEO" == "true" ]; then
+    # open source ATI
+    if [ "$VIDEO_ati_open" == "true" ]; then
+        opt /sys/class/drm/card0/device/power_method profile
+        opt /sys/class/drm/card0/device/power_profile low
+    fi
+    # i915
+    if [ "$VIDEO_intel" == "true" ]; then
+        opt /sys/module/i915/parameters/i915_enable_rc6 1
+    fi
+fi
 
 # other
 for i in $(find /etc/powerdown -type f); do run $i; done
+
 exit 0
