@@ -6,11 +6,11 @@ USB_powersave=true
 
 NMI=true
 
-CPU=true
-CPU_governor=ondemand
-CPU_thermal=false
+#CPU=true
+#CPU_governor=ondemand
+#CPU_thermal=false
 
-ASPM=true
+#ASPM=true
 
 VM=true
 VM_laptop_mode=5
@@ -22,7 +22,8 @@ VM_dirty_writeback_centisecs=60000
 DISK=true
 DISK_link_pm=true
 DISK_mount_options=true
-DISK_spindown=120
+DISK_spindown="/dev/sdb"
+DISK_spindown_to=120
 
 SOUND=true
 
@@ -33,5 +34,5 @@ WEBCAM=true
 BLUETOOTH=true
 
 VIDEO=true
-VIDEO_ati_open=true
+VIDEO_ati_open=false
 VIDEO_intel=true
