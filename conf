@@ -29,6 +29,9 @@ SOUND=true
 
 NET=true
 
+BACKLIGHT=true
+BACKLIGHT_type=intel
+
 WEBCAM=true
 
 BLUETOOTH=true
@@ -36,3 +39,5 @@ BLUETOOTH=true
 VIDEO=true
 VIDEO_ati_open=false
 VIDEO_intel=true
+
+BBSWITCH=true
